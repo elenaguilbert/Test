@@ -263,3 +263,46 @@ Remove old account usage from Jenkins integrations
 Only Global Settings are involved (no repo-level changes)
 Scope (global/project/repo) is handled via existing Jenkins server entries
 Authentication change is centralized → impacts all linked repos
+
+
+
+STEP 0 — Generate Jenkins API Token for svc-bb-cbci (CloudBees CI)
+(This step comes BEFORE updating Bitbucket.)
+Prerequisites
+svc-bb-cbci must already exist as a Jenkins user.
+You must have admin rights or the user must log in.
+🔹 1. Log in to CloudBees CI (Jenkins) with the new service account
+You have two options:
+Option A (Preferred)
+Log in as svc-bb-cbci → create token.
+Option B
+Log in as admin → impersonate/edit the service account → create token.
+🔹 2. Navigate to User Profile
+Click on your username (top right)
+Select “Configure”
+Path example:
+
+CloudBees CI → People → svc-bb-cbci → Configure
+🔹 3. Create a New API Token
+Scroll to the section “API Tokens” → “Add new Token”
+Click Add New Token
+Give a name (ex: bitbucket-integration)
+Click Generate
+You will immediately see a new token value.
+🔥 IMPORTANT
+👉 Copy the token NOW. It will never be shown again.
+👉 Store it securely (Bitbucket Credential configuration, Secret Manager, etc.).
+🔹 4. Verify Permissions
+For Bitbucket → Jenkins integration, the new account must have:
+Minimum required permissions:
+Overall → Read
+Job → Read
+Job → Build
+Job → Discover
+SCM → Tag / Read (depending on your pipelines)
+If it's part of CloudBees RBAC:
+Ensure correct Group → Role → Team folder permissions.
+🔹 5. Token is Ready for Use
+This token will be used in:
+✔ Bitbucket → Global Jenkins Settings
+✔ Bitbucket → Jenkins Servers (“Webhook to Jenkins”)
