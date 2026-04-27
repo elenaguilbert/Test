@@ -509,3 +509,94 @@ After validation:
 Remove old credential usage from automation jobs
 Revoke old token
 Remove svc-app-rlct if no longer used
+
+
+
+
+SonarQube Migration Plan (Using Existing CJOC Credential ID)
+New Account: SVC-CBCI-SONAR
+Credential Strategy: ✔ Reuse existing Secret Text credential (no new ID)
+1. Current State
+Existing SonarQube service account has:
+Administer System (full access)
+Token from this account is stored in:
+CJOC → Credentials → Secret Text
+All pipelines use this credential ID for Sonar scan
+Scanner can:
+Run analysis
+Auto-create projects
+Apply quality gates
+2. New Account Creation
+Steps:
+Login to SonarQube (admin user)
+Go to:
+
+Administration → Security → Users
+Create user:
+Username: SVC-CBCI-SONAR
+Password: as per policy
+3. Assign Permissions (MATCH CURRENT ACCOUNT)
+Since you explicitly want same as current account, assign:
+✔ Administer System
+👉 This automatically includes:
+Execute Analysis
+Create Projects
+Administer Projects
+Quality Gates / Profiles access
+Full API access
+⚠️ This is high privilege, but matches your current setup.
+4. Generate Token
+Login as SVC-CBCI-SONAR
+Go to:
+
+My Account → Security
+Generate token:
+Name: cbci-sonar-token
+Copy token immediately
+5. Update Existing Credential in CJOC
+Steps:
+Login to CJOC
+Go to:
+
+Manage Jenkins → Credentials
+Open the existing Secret Text credential used for Sonar
+Click Update / Edit
+Replace:
+Secret: paste new token (from SVC-CBCI-SONAR)
+Keep:
+Same Credential ID
+Save
+6. Impact
+✔ No pipeline changes required
+✔ No Jenkinsfile updates
+✔ All pipelines automatically start using new account
+7. Validation Steps
+✔ Test 1 — Existing Project Scan
+Trigger pipeline
+Verify:
+Scan completes successfully
+No authentication errors
+✔ Test 2 — New Project Creation
+Run pipeline for a new repo/service
+Verify:
+Project is auto-created in SonarQube
+Scan completes successfully
+✔ Test 3 — Logs Validation
+Check Jenkins console:
+No:
+401 Unauthorized
+Insufficient privileges
+Should show successful analysis upload
+8. Rollback Plan
+If any issue occurs:
+Go back to CJOC → Credentials
+Edit same credential
+Restore old token
+Save
+Re-run pipeline
+9. Cleanup (Later Phase)
+After successful validation:
+Revoke old token in SonarQube
+Remove old service account or:
+Remove Administer System access
+Update documentation
