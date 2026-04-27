@@ -66,3 +66,84 @@ Confirm:
 SVC-APP-RLCT is no longer used in branch permissions
 All automation works using new account
 Document completion in migration tracker
+
+
+
+
+
+CloudBees CD — Correct Migration Steps (Your Exact Flow)
+Objective
+Migrate REST plugin configuration from old → new
+Validate existing deployment templates
+Introduce new service account
+Update REST plugin config to use new service account
+Validate again
+STEP 1 — Identify Existing REST Plugin Usage
+Before touching anything:
+Note which REST plugin configuration is used by:
+Deployment templates
+Application/Component processes
+Release pipelines
+(No need to change anything here — only mapping usage.)
+STEP 2 — Perform REST Plugin Configuration Migration
+Why?
+Because the old configuration format is not supported after upgrade.
+Steps:
+Go to Administration → Plugins
+Select REST Plugin
+Choose Actions → Migrate Configurations
+Migration creates new plugin configuration(s) based on the old ones
+✔ After migration, all deployment templates automatically point to new migrated configs
+✔ No manual update needed in templates at this stage
+STEP 3 — Validate Using a Test Release (Before Changing Accounts)
+This ensures that the plugin migration was done correctly.
+Steps:
+Create a test release
+Trigger a deployment using existing flow
+Validate:
+REST calls work
+PR creation/merge (if applicable) works
+No authentication errors with old service account
+No plugin compatibility issues
+✔ If this passes, migration is successful
+✔ If not, migration must be corrected before moving on
+STEP 4 — Add New Service Account to CloudBees CD
+Once plugin migration is validated, add the new account.
+Steps:
+Go to Administration → Credentials
+Create new credential:
+Username: svc-bb-cbcd
+Token/Password: (Bitbucket PAT)
+Save the credential
+Make sure CDC can use this credential by:
+Assigning proper ACL permissions if required
+(No change in templates yet.)
+STEP 5 — Update REST Plugin Configuration to Use New Service Account
+Now update the migrated REST plugin configuration:
+Go to Administration → Plugins → REST Plugin → Configurations
+Open the newly migrated configuration (same name + migrated)
+Replace:
+Username → svc-bb-cbcd
+Password → new credential object created in Step 4
+Save
+Important:
+Because templates inherit configuration by reference, updating the config updates ALL deployment templates automatically.
+✔ No need to edit each template
+✔ No need to modify processes manually
+STEP 6 — Validate Again Using Test Release (Final Validation)
+Now validate that the new service account works end-to-end.
+Steps:
+Create a new test release
+Execute the release pipeline
+Validate:
+REST plugin steps authenticate successfully using new account
+PR creation works
+Merge to master works
+No 401/403 errors
+All deployment flows run successfully
+If everything is successful → migration is complete.
+STEP 7 — Cleanup (Optional)
+After final validation:
+Remove old REST plugin configuration
+Remove old credential object (SVC-APP-RLCT)
+Document changes in the migration tracker
