@@ -306,3 +306,106 @@ Ensure correct Group → Role → Team folder permissions.
 This token will be used in:
 ✔ Bitbucket → Global Jenkins Settings
 ✔ Bitbucket → Jenkins Servers (“Webhook to Jenkins”)
+
+
+
+
+
+
+CloudBees CI (CJOC) – SCM Credential Migration Plan
+Objective
+Replace existing Bitbucket service account svc-app-rlct with new service account svc-cbci-bb in CloudBees CI, by updating the existing Credentials ID used across pipelines, without requiring any changes in pipeline configurations or code.
+Scope
+CJOC (CloudBees Jenkins Operations Center)
+Existing Credentials ID used for:
+Multibranch pipelines
+Jenkinsfile-based pipelines
+Shared libraries
+SCM checkout (Git/Bitbucket)
+Pre-Requisites
+Service account svc-cbci-bb is created in Bitbucket
+Required permissions are assigned:
+Project/Repository → Read access
+Valid authentication available:
+Username + Password or
+Personal Access Token (recommended)
+Implementation Steps
+Step 1 — Login to CJOC
+Access CloudBees CI (CJOC)
+Login using administrator credentials
+Step 2 — Navigate to Credentials
+Go to:
+
+Manage Jenkins → Credentials
+Step 3 — Locate Existing Credentials Entry
+Identify the existing Credentials ID currently used for Bitbucket access
+(Example: bb-svc-app-rlct)
+Click on the credentials entry
+Step 4 — Edit Credentials
+Click Update / Edit
+Step 5 — Replace Account Details
+Update the following fields:
+Username: svc-cbci-bb
+Password / Token: (new password or Bitbucket token)
+⚠️ Do NOT modify:
+Credentials ID
+Description (optional to update for clarity)
+Step 6 — Save Changes
+Click Save
+Changes take effect immediately across all pipelines using this Credentials ID
+Impact
+All pipelines referencing this Credentials ID will automatically use the new account
+No changes required in:
+Jenkinsfiles
+Multibranch configurations
+Shared libraries
+Job configurations
+Validation Steps
+Validation 1 — Multibranch Pipeline Scan
+Open a multibranch pipeline job
+Click “Scan Repository Now”
+Verify:
+Repository scan completes successfully
+No authentication errors
+Validation 2 — Pipeline Execution
+Trigger a pipeline build
+Validate:
+Source code checkout from Bitbucket is successful
+No errors like:
+Authentication failed
+Access denied
+Repository not found
+Validation 3 — Console Log Verification
+Check build logs for:
+Successful git clone or checkout scm
+No reference to old account authentication failures
+Validation 4 — Shared Library Loading
+If shared libraries are used:
+Ensure libraries load successfully during pipeline execution
+Rollback Plan
+If any issue occurs:
+Go back to:
+
+Manage Jenkins → Credentials
+Edit the same Credentials ID
+Restore:
+Username → svc-app-rlct
+Password → old password/token
+Save
+Re-run pipeline to confirm rollback
+Post-Implementation Activities
+After successful validation:
+Monitor pipeline executions for a defined period
+Ensure:
+No intermittent authentication issues
+All repositories are accessible
+Cleanup (Later Phase)
+After confirming complete migration:
+Revoke old credentials in Bitbucket for svc-app-rlct
+Remove old account access from Bitbucket (if no longer required)
+Update documentation and migration tracker
+Key Notes
+No restart of CJOC or controllers is required
+Changes are effective immediately
+Using existing Credentials ID avoids large-scale pipeline updates
+Ensure correct Bitbucket permissions for new account before change
