@@ -147,3 +147,46 @@ After final validation:
 Remove old REST plugin configuration
 Remove old credential object (SVC-APP-RLCT)
 Document changes in the migration tracker
+
+
+
+
+
+
+CloudBees CD – Cleanup Plan (Post-Migration)
+After migrating to the new REST plugin configuration and validating new releases with the new service account, perform the following cleanup activities after the agreed monitoring period.
+Important Note
+Existing releases (created before the migration) will continue to use the old REST plugin configuration and the old account (svc-app-rlct).
+Only new releases will inherit and use the new plugin configuration with the new service account.
+Cleanup must be done only after all old releases are retired or completed and no longer need the old configuration.
+1. Remove Old REST Plugin Configuration
+Navigate to Administration → Plugins → Plugin Configurations.
+Locate the old REST plugin configuration that uses the old account svc-app-rlct.
+Confirm:
+All old releases tied to this configuration are completed/closed.
+No active deployments are referring to it.
+Once validated, delete the old plugin configuration.
+2. Remove Old Service Account From CloudBees CD
+Go to Administration → Users / Groups.
+Locate the service account svc-app-rlct.
+Validate:
+It is not referenced in any remaining plugin configurations.
+It is not mapped to any active roles.
+No running or scheduled releases depend on it.
+If safe, remove the old service account.
+3. Cleanup Role & Permission Mappings
+Navigate to Access Control → Roles.
+Remove the old account from:
+System roles
+Project roles
+Any custom roles or security groups
+4. Final Validation
+Create a new test release and verify:
+It uses the new REST plugin configuration.
+Deployment calls are authenticated using the new service account only.
+Check logs to ensure:
+No fallback or reference to svc-app-rlct remains.
+5. Closeout Communication
+Notify the respective stakeholders:
+Old configuration & service account have been removed.
+All future operations must use the new service account and new configuration.
