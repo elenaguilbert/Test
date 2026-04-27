@@ -409,3 +409,103 @@ No restart of CJOC or controllers is required
 Changes are effective immediately
 Using existing Credentials ID avoids large-scale pipeline updates
 Ensure correct Bitbucket permissions for new account before change
+
+
+
+
+
+
+CloudBees CI – Automation Jobs Credential Migration Plan
+Objective
+Introduce a new service account SVC-BB-AUTOMATION for Bitbucket automation jobs, without impacting existing SCM pipelines.
+Why New Credential is Required
+Use Case
+Account
+Permission
+SCM Checkout
+svc-cbci-bb
+Read
+Automation Jobs
+SVC-BB-AUTOMATION
+Admin
+👉 Using same credential = ❌ security risk + ❌ functional failure
+Implementation Steps
+STEP 1 — Prepare Service Account
+Ensure SVC-BB-AUTOMATION exists in Bitbucket
+Assign required permissions:
+Global Admin (or required admin scopes)
+Project Admin (if needed)
+STEP 2 — Generate Bitbucket Token
+Login as SVC-BB-AUTOMATION
+Go to Personal Settings → Access Tokens
+Create token with required scopes (admin operations)
+Copy token securely
+STEP 3 — Create New Credential in CJOC
+Login to CJOC
+Go to:
+
+Manage Jenkins → Credentials
+Add new credential:
+Kind: Username with Password
+Username: SVC-BB-AUTOMATION
+Password: Token
+ID:
+
+bb-automation-creds
+Description:
+
+Bitbucket automation service account
+Save.
+STEP 4 — Identify Automation Jobs Using Old Credential
+Locate jobs:
+Inactive user cleanup
+Add user to stash group
+Add group to project
+Check:
+Pipeline script
+Freestyle job config
+Shared library
+Find where old credential is used:
+
+credentialsId: 'bb-svc-app-rlct'
+STEP 5 — Update Automation Jobs
+If using Pipeline:
+Replace:
+
+credentialsId: 'bb-svc-app-rlct'
+→
+
+credentialsId: 'bb-automation-creds'
+If using Freestyle Jobs:
+Open job → Configure
+Replace credentials in:
+Build steps
+Environment variables
+Script bindings
+If credentials are hardcoded in scripts:
+Replace:
+
+svc-app-rlct
+→
+
+SVC-BB-AUTOMATION
+STEP 6 — Validation
+Run each job manually:
+✔ Inactive User Cleanup
+Able to fetch users
+Able to delete/disable users
+✔ Add User to Group
+Able to add successfully
+✔ Add Group to Project
+Able to assign permissions
+Check logs:
+No 401 / 403 errors
+API calls return success
+STEP 7 — Enable Cron Back
+Re-enable scheduled triggers
+Monitor next execution
+STEP 8 — Cleanup (Later Phase)
+After validation:
+Remove old credential usage from automation jobs
+Revoke old token
+Remove svc-app-rlct if no longer used
