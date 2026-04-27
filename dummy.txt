@@ -1,1 +1,68 @@
 This is a dummy file created for testing purposes.
+
+
+
+Bitbucket Branch Permission Migration Steps (SVC-APP-RLCT Replacement)
+Objective
+Replace SVC-APP-RLCT (currently using Global Admin access) with a new service account svc-bb-cbcd for:
+Automated PR creation
+Merge to master via CloudBees CD
+Maintaining branch restrictions
+Step 1: Create New Service Account
+Request creation of new service account: svc-bb-cbcd
+Ensure account is active and accessible.
+Step 2: Assign Project-Level Permissions
+This is mandatory since the old account had Global Admin access.
+Login to Bitbucket
+Navigate to:
+Projects → Select Project → Project Settings → Permissions
+Click Add Users/Groups
+Add: svc-bb-cbcd
+Grant permission: Write
+Save changes
+Step 3: Update Branch Permissions (Add New Account)
+Do NOT remove old account yet.
+Navigate to:
+Repository → Settings → Branch Permissions
+Identify rules configured for master branch, such as:
+Rewriting history
+Deletion
+Changes without pull request
+All changes
+For each rule:
+Click Edit
+Under Exemptions, add:
+svc-bb-cbcd
+Save
+Ensure new account is added to ALL rules where SVC-APP-RLCT exists.
+Step 4: Validate New Account (Critical Step)
+Trigger a CloudBees CD self-service deployment
+Verify:
+PR is created successfully
+PR is merged to master
+No permission errors occur
+If any failure occurs:
+Recheck project-level access
+Ensure new account is added in all branch permission rules
+Step 5: Remove Old Account from Branch Permissions
+Perform only after successful validation.
+Go to:
+Repository → Settings → Branch Permissions
+For each rule:
+Click Edit
+Remove: SVC-APP-RLCT
+Keep:
+svc-bb-cbcd
+Other required groups/users
+Save changes
+Step 6: Final Validation
+Trigger deployment again via CloudBees CD
+Verify:
+PR creation works
+Merge to master works
+No failures observed
+Step 7: Post-Migration Check
+Confirm:
+SVC-APP-RLCT is no longer used in branch permissions
+All automation works using new account
+Document completion in migration tracker
