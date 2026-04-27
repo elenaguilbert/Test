@@ -190,3 +190,76 @@ No fallback or reference to svc-app-rlct remains.
 Notify the respective stakeholders:
 Old configuration & service account have been removed.
 All future operations must use the new service account and new configuration.
+
+
+
+
+
+
+
+Bitbucket Hooks / Jenkins Integration – Migration Steps
+Objective
+Replace svc-app-rlct with svc-bb-cbci in:
+Jenkins Settings (global)
+Jenkins Servers (webhook configurations)
+🔹 STEP 1 – Prepare New Service Account
+Ensure svc-bb-cbci is created in Bitbucket.
+Grant Read access at required project level (minimum required).
+Generate token/password for this account.
+🔹 STEP 2 – Update Jenkins Settings (Global)
+📍 Location:
+Bitbucket → Administration → Jenkins → Jenkins Settings
+Steps:
+Open Jenkins Settings.
+Locate configuration using svc-app-rlct token.
+Replace:
+Username → svc-bb-cbci
+Token → new token
+Save changes.
+✅ Validation:
+Open any repo → Jenkins tab
+Ensure jobs are visible (no auth error)
+🔹 STEP 3 – Update Jenkins Servers (Webhook to Jenkins for Bitbucket)
+📍 Location:
+Bitbucket → Administration → Jenkins → Jenkins Servers
+You mentioned:
+Multiple entries created based on scope (global/project/repo)
+Each entry represents a webhook integration.
+🔸 For EACH Jenkins Server Entry
+Steps:
+Open the Jenkins server entry.
+Click Edit.
+Replace:
+Username → svc-bb-cbci
+Token → new token
+Save.
+🔸 Important
+Do NOT delete and recreate — just edit existing entries
+Keep same URLs and configurations
+Only replace authentication
+🔹 STEP 4 – Validation (Very Important)
+Pick one repo (pilot):
+Test 1 – Webhook Trigger
+Make a test commit.
+Verify:
+Bitbucket sends webhook
+Jenkins job triggers automatically
+Test 2 – Manual Trigger from Bitbucket
+Go to repo → Jenkins tab
+Trigger build manually
+Verify job runs successfully
+Test 3 – Check Logs
+Bitbucket webhook → should return HTTP 200
+Jenkins logs → no authentication errors
+🔹 STEP 5 – Rollout
+Once pilot is successful:
+Update remaining Jenkins server entries (if not already done)
+No additional repo/project-level changes needed
+🔹 STEP 6 – Cleanup (Later Phase)
+After validation and monitoring:
+Revoke token of svc-app-rlct
+Remove old account usage from Jenkins integrations
+⚠️ Key Points
+Only Global Settings are involved (no repo-level changes)
+Scope (global/project/repo) is handled via existing Jenkins server entries
+Authentication change is centralized → impacts all linked repos
