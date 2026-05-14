@@ -600,3 +600,14 @@ Revoke old token in SonarQube
 Remove old service account or:
 Remove Administer System access
 Update documentation
+
+
+
+
+Hi Team,
+
+For better planning of weekend support coverage, can we all update our availability for at least two weekends per month in the leave tracker? It would be helpful if we could publish the availability in advance for upcoming months itself.
+
+In case of any changes later, we can update the tracker along with the reason and revised dates accordingly.
+
+This will help with smoother coordination and avoid last-minute dependencies. Thank you for your support and cooperation.
