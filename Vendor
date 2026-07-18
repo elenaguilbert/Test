@@ -17,3 +17,9 @@ Does IBM recommend adding indexes or temporarily disabling specific foreign key 
 Is there any documented guidance or APAR related to this database migration step?
 What is the recommended approach to proceed safely?
 We need your immediate support on this issue. If possible, could someone please join our bridge/call at the earliest to help us assess the situation and recommend the best course of action?
+
+
+
+UDeploy Upgrade Status: We initiated the IBM DevOps Deploy server upgrade from 7.3.2 to 8.2.2. During the database migration, the upgrade got stuck at the step "Ensure resource and desired inventory tables have valid UUIDs". DBA analysis confirmed a long-running DELETE operation on the INV_DESIRED_INVENTORY table. Although the query was progressing with no blockers, it was consuming ~99% CPU due to repeated foreign key/index scans, with an estimated completion time of ~14 hours, impacting database performance.
+Based on the performance impact, the DBA team recommended cancelling the process and addressing the foreign key/index-related issue before retrying the upgrade. Since this behavior is part of the IBM upgrade process, we decided to seek clarification from the vendor before making any database changes. The upgrade was stopped, the environment was rolled back successfully, and the application is back online.
+IBM Support is currently investigating the issue. As per their initial response, this is not a known issue, and they are analyzing the logs to identify the root cause and provide the recommended solution/workaround before we proceed with the next upgrade attempt.
