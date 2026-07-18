@@ -1,0 +1,19 @@
+Hi Team,
+We are performing an IBM DevOps Deploy (UDeploy) server upgrade from 7.3.2 to 8.2.2 using install-server.sh.
+The installer progressed successfully until the following database migration step:
+Applying nl_8.2.0 change: 1 - Ensure resource and desired inventory tables have valid UUIDs
+The upgrade has remained at this step for several hours without any further installer output.
+Our DBA team investigated and confirmed that the upgrade is executing the following long-running SQL statement:
+DELETE FROM INV_DESIRED_INVENTORY ...
+Their observations are:
+The Oracle session is ACTIVE and not blocked.
+The SQL is making progress, but very slowly.
+The INV_DESIRED_INVENTORY table contains approximately 1 million rows.
+SQL Monitor analysis indicates the performance issue is due to repeated foreign key validation/full index scans, with an estimated completion time of ~14 hours.
+Based on their analysis, the DBA team has recommended cancelling the current DML, implementing the required database optimization (indexing/constraint-related), and rerunning the upgrade.
+Before proceeding with that approach, we would like your guidance:
+Is this a known issue during the 7.3.2 → 8.2.2 upgrade?
+Does IBM recommend adding indexes or temporarily disabling specific foreign key constraints for this migration?
+Is there any documented guidance or APAR related to this database migration step?
+What is the recommended approach to proceed safely?
+We need your immediate support on this issue. If possible, could someone please join our bridge/call at the earliest to help us assess the situation and recommend the best course of action?
