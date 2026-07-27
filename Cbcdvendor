@@ -1,0 +1,11 @@
+Hi Team,
+As part of our CloudBees CD migration to the cloud, we are reviewing the database size to estimate the migration effort and downtime.
+We observed that the ec_entity_change table has grown to more than 1 TB, making it one of the largest tables in the database. Since copying such a large volume of data to the cloud will significantly increase the migration time, we would like to better understand this table and determine whether its size can be reduced.
+Could you please help us with the following?
+What type of data is stored in the ec_entity_change table, and is it primarily audit/history data?
+Is all the data in this table required for normal CloudBees CD operations, or is historical data retained only for auditing purposes?
+Does CloudBees provide any supported cleanup or purge policies/utilities for this table?
+Are there any recommended retention periods or best practices for managing the size of this table?
+Is it safe to purge older records, and if so, what is the recommended approach to do this without impacting the application?
+Our goal is to reduce the database size, if possible, before the cloud migration to minimize data copy time and overall migration duration.
+We appreciate your guidance and recommendations.
