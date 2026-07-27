@@ -32,3 +32,7 @@ We have a couple of questions before proceeding:
 During our previous upgrade attempt, our DBA team estimated that the execution of the upgrade_001_inventory_uuids.sql step would take approximately 14 hours due to the long-running database operation. With the provided test fix in place, what would be the expected execution time for this step? We understand the exact duration depends on the database size, but an approximate estimate would help us plan the maintenance window.
 We have a 3-node UDeploy server cluster. Since the database upgrade is performed during the first node upgrade, could you please confirm whether the database migration will only be executed during the first node upgrade? We expect the second and third node upgrades to complete significantly faster as the database changes would already have been applied. Please confirm if our understanding is correct.
 We are planning to retry the upgrade on 1st August. We would appreciate it if someone from your team could be available on standby during the activity to provide immediate assistance in case we encounter any issues.
+
+
+
+We also noticed that the known issue page appears to have been published on 21st July. Before we proceed with the next upgrade attempt, could you please confirm whether the provided test fix has been validated for the same issue we encountered? We would appreciate any supporting evidence, validation results, or engineering confirmation that demonstrates this fix resolves the issue, as this will give us confidence before retrying the upgrade.
