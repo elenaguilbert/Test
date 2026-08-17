@@ -1,0 +1,373 @@
+#!/bin/bash
+
+# ==========================================================
+# CloudBees CI Pipeline Failure Monitoring Script
+#
+# Reads all pipelines from automation_pipelines.txt
+# Pipeline data starts from line 1
+#
+# CB_API_TOKEN is securely injected by CloudBees Jenkins
+# using the configured credentialsId.
+# ==========================================================
+
+
+# ==========================================================
+# Configuration
+# ==========================================================
+
+PIPELINE_FILE="/app/automation/pipeline-monitor/automation_pipelines.txt"
+
+STATE_FILE="/app/automation/pipeline-monitor/pipeline_state.txt"
+
+LOG_FILE="/app/automation/pipeline-monitor/pipeline_monitor.log"
+
+
+# ==========================================================
+# CloudBees credentials
+#
+# CB_API_TOKEN is injected by Jenkins using withCredentials()
+# ==========================================================
+
+CB_API_TOKEN="${CB_API_TOKEN}"
+
+# DevOps common account username
+CB_USERNAME="DEVOPS_COMMON_ACCOUNT"
+
+
+# ==========================================================
+# Email configuration
+# ==========================================================
+
+MAIL_TO="syf-devops-platform-dl@company.com"
+
+MAIL_FROM="pipeline-monitor@company.com"
+
+
+# ==========================================================
+# Logging function
+# ==========================================================
+
+log()
+{
+    echo "$(date '+%Y-%m-%d %H:%M:%S') | $1" >> "$LOG_FILE"
+}
+
+
+# ==========================================================
+# Send failure email
+# ==========================================================
+
+send_email()
+{
+    PIPELINE_NAME="$1"
+
+    BUILD_NUMBER="$2"
+
+    BUILD_URL="$3"
+
+
+    SUBJECT="ALERT: CloudBees Pipeline Failed - ${PIPELINE_NAME}"
+
+
+    BODY="
+CloudBees CI Pipeline Failure Notification
+
+Pipeline Name : ${PIPELINE_NAME}
+Build Number  : ${BUILD_NUMBER}
+Status        : FAILURE
+Failed Time   : $(date '+%Y-%m-%d %H:%M:%S')
+
+Pipeline URL:
+${BUILD_URL}
+
+Please check the pipeline and take necessary action.
+"
+
+
+    echo "$BODY" | mailx \
+        -r "$MAIL_FROM" \
+        -s "$SUBJECT" \
+        "$MAIL_TO"
+
+
+    log "Email sent for ${PIPELINE_NAME} Build #${BUILD_NUMBER}"
+}
+
+
+# ==========================================================
+# Validate pipeline file
+# ==========================================================
+
+if [ ! -f "$PIPELINE_FILE" ]; then
+
+    log "ERROR: Pipeline file not found: $PIPELINE_FILE"
+
+    exit 1
+
+fi
+
+
+# ==========================================================
+# Validate CloudBees token
+# ==========================================================
+
+if [ -z "$CB_API_TOKEN" ]; then
+
+    log "ERROR: CloudBees API token was not provided"
+
+    exit 1
+
+fi
+
+
+# ==========================================================
+# Create state file if it doesn't exist
+# ==========================================================
+
+touch "$STATE_FILE"
+
+
+log "=========================================================="
+
+log "Pipeline monitoring started"
+
+
+# ==========================================================
+# Read ALL pipelines
+#
+# Pipeline data starts from LINE 1
+# ==========================================================
+
+while IFS= read -r LINE
+do
+
+    # ------------------------------------------------------
+    # Skip empty lines
+    # ------------------------------------------------------
+
+    [ -z "$LINE" ] && continue
+
+
+    # ------------------------------------------------------
+    # Extract pipeline name
+    #
+    # First | separated field
+    # ------------------------------------------------------
+
+    PIPELINE_NAME=$(echo "$LINE" | cut -d'|' -f1 | xargs)
+
+
+    # ------------------------------------------------------
+    # Extract pipeline URL
+    #
+    # Last | separated field
+    # ------------------------------------------------------
+
+    PIPELINE_URL=$(echo "$LINE" | awk -F'|' '{print $NF}' | xargs)
+
+
+    # ------------------------------------------------------
+    # Validate pipeline name
+    # ------------------------------------------------------
+
+    if [ -z "$PIPELINE_NAME" ]; then
+
+        log "WARNING: Pipeline name is empty"
+
+        continue
+
+    fi
+
+
+    # ------------------------------------------------------
+    # Validate pipeline URL
+    # ------------------------------------------------------
+
+    if [ -z "$PIPELINE_URL" ]; then
+
+        log "WARNING: No URL found for $PIPELINE_NAME"
+
+        continue
+
+    fi
+
+
+    log "Checking pipeline: $PIPELINE_NAME"
+
+    log "Pipeline URL: $PIPELINE_URL"
+
+
+    # ======================================================
+    # CloudBees lastBuild API
+    # ======================================================
+
+    API_URL="${PIPELINE_URL%/}/lastBuild/api/json"
+
+
+    RESPONSE=$(curl -s -k \
+        --user "$CB_USERNAME:$CB_API_TOKEN" \
+        "$API_URL")
+
+
+    # ======================================================
+    # Check API response
+    # ======================================================
+
+    if [ -z "$RESPONSE" ]; then
+
+        log "ERROR: No response from CloudBees for $PIPELINE_NAME"
+
+        continue
+
+    fi
+
+
+    # ======================================================
+    # Extract build information
+    # ======================================================
+
+    BUILD_NUMBER=$(echo "$RESPONSE" | jq -r '.number // empty')
+
+    RESULT=$(echo "$RESPONSE" | jq -r '.result // empty')
+
+    BUILD_URL=$(echo "$RESPONSE" | jq -r '.url // empty')
+
+
+    # ======================================================
+    # Validate build information
+    # ======================================================
+
+    if [ -z "$BUILD_NUMBER" ]; then
+
+        log "ERROR: Unable to retrieve build information for $PIPELINE_NAME"
+
+        continue
+
+    fi
+
+
+    log "$PIPELINE_NAME | Build #$BUILD_NUMBER | Result: $RESULT"
+
+
+    # ======================================================
+    # FAILURE
+    # ======================================================
+
+    if [ "$RESULT" = "FAILURE" ]; then
+
+
+        # --------------------------------------------------
+        # Get previously notified build
+        # --------------------------------------------------
+
+        PREVIOUS_BUILD=$(grep "^${PIPELINE_NAME}|" "$STATE_FILE" 2>/dev/null |
+                         tail -1 |
+                         cut -d'|' -f2)
+
+
+        # --------------------------------------------------
+        # Check whether this failure was already notified
+        # --------------------------------------------------
+
+        if [ "$PREVIOUS_BUILD" != "$BUILD_NUMBER" ]; then
+
+
+            log "NEW FAILURE DETECTED: $PIPELINE_NAME Build #$BUILD_NUMBER"
+
+
+            # ------------------------------------------------
+            # Send email
+            # ------------------------------------------------
+
+            send_email \
+                "$PIPELINE_NAME" \
+                "$BUILD_NUMBER" \
+                "$BUILD_URL"
+
+
+            # ------------------------------------------------
+            # Save failure state
+            # ------------------------------------------------
+
+            grep -v "^${PIPELINE_NAME}|" "$STATE_FILE" \
+                > "${STATE_FILE}.tmp" 2>/dev/null
+
+
+            echo "${PIPELINE_NAME}|${BUILD_NUMBER}" \
+                >> "${STATE_FILE}.tmp"
+
+
+            mv "${STATE_FILE}.tmp" "$STATE_FILE"
+
+
+        else
+
+
+            log "Already notified: $PIPELINE_NAME Build #$BUILD_NUMBER"
+
+
+        fi
+
+
+    # ======================================================
+    # SUCCESS
+    # ======================================================
+
+    elif [ "$RESULT" = "SUCCESS" ]; then
+
+
+        log "$PIPELINE_NAME | Build #$BUILD_NUMBER | SUCCESS"
+
+
+        # --------------------------------------------------
+        # Remove previous failure state
+        # --------------------------------------------------
+
+        grep -v "^${PIPELINE_NAME}|" "$STATE_FILE" \
+            > "${STATE_FILE}.tmp" 2>/dev/null
+
+
+        mv "${STATE_FILE}.tmp" "$STATE_FILE"
+
+
+    # ======================================================
+    # BUILD RUNNING
+    # ======================================================
+
+    elif [ -z "$RESULT" ]; then
+
+
+        log "$PIPELINE_NAME | Build #$BUILD_NUMBER is still running"
+
+
+    # ======================================================
+    # OTHER RESULT
+    #
+    # ABORTED
+    # UNSTABLE
+    # NOT_BUILT
+    # etc.
+    # ======================================================
+
+    else
+
+
+        log "$PIPELINE_NAME | Build #$BUILD_NUMBER | Result: $RESULT"
+
+
+    fi
+
+
+done < "$PIPELINE_FILE"
+
+
+# ==========================================================
+# Monitoring completed
+# ==========================================================
+
+log "Pipeline monitoring completed"
+
+log "=========================================================="
+
+
+exit 0

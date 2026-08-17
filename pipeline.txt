@@ -1,0 +1,181 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Monitor CloudBees Pipelines') {
+            steps {
+
+                withCredentials([
+                    string(
+                        credentialsId: 'YOUR_CREDENTIAL_ID',
+                        variable: 'CB_API_TOKEN'
+                    )
+                ]) {
+
+                    sh '''
+                        #!/bin/bash
+
+                        PIPELINE_FILE="/app/automation/pipeline-monitor/automation_pipelines.txt"
+                        STATE_FILE="/app/automation/pipeline-monitor/pipeline_state.txt"
+
+                        CB_USERNAME="YOUR_DEVOPS_COMMON_ACCOUNT"
+
+                        MAIL_TO="syf-devops-platform-dl@company.com"
+                        MAIL_FROM="pipeline-monitor@company.com"
+
+                        if [ ! -f "$PIPELINE_FILE" ]; then
+                            echo "ERROR: Pipeline file not found: $PIPELINE_FILE"
+                            exit 1
+                        fi
+
+                        if [ -z "$CB_API_TOKEN" ]; then
+                            echo "ERROR: CloudBees API token not available"
+                            exit 1
+                        fi
+
+                        command -v curl >/dev/null 2>&1 || {
+                            echo "ERROR: curl is not installed"
+                            exit 1
+                        }
+
+                        command -v jq >/dev/null 2>&1 || {
+                            echo "ERROR: jq is not installed"
+                            exit 1
+                        }
+
+                        command -v mailx >/dev/null 2>&1 || {
+                            echo "ERROR: mailx is not installed"
+                            exit 1
+                        }
+
+                        touch "$STATE_FILE"
+
+                        echo "=============================================="
+                        echo "CloudBees Pipeline Monitoring Started"
+                        echo "$(date '+%Y-%m-%d %H:%M:%S')"
+                        echo "=============================================="
+
+                        while IFS= read -r LINE
+                        do
+                            [ -z "$LINE" ] && continue
+
+                            PIPELINE_NAME=$(echo "$LINE" | cut -d'|' -f1 | xargs)
+                            PIPELINE_URL=$(echo "$LINE" | awk -F'|' '{print $NF}' | xargs)
+
+                            if [ -z "$PIPELINE_NAME" ]; then
+                                echo "WARNING: Pipeline name is empty"
+                                continue
+                            fi
+
+                            if [ -z "$PIPELINE_URL" ]; then
+                                echo "WARNING: No URL found for $PIPELINE_NAME"
+                                continue
+                            fi
+
+                            echo ""
+                            echo "Checking Pipeline : $PIPELINE_NAME"
+                            echo "Pipeline URL      : $PIPELINE_URL"
+
+                            API_URL="${PIPELINE_URL%/}/lastBuild/api/json"
+
+                            RESPONSE=$(curl -s -k \
+                                --user "$CB_USERNAME:$CB_API_TOKEN" \
+                                "$API_URL")
+
+                            if [ -z "$RESPONSE" ]; then
+                                echo "ERROR: No response from CloudBees"
+                                continue
+                            fi
+
+                            BUILD_NUMBER=$(echo "$RESPONSE" | jq -r '.number // empty')
+                            RESULT=$(echo "$RESPONSE" | jq -r '.result // empty')
+                            BUILD_URL=$(echo "$RESPONSE" | jq -r '.url // empty')
+
+                            if [ -z "$BUILD_NUMBER" ]; then
+                                echo "ERROR: Unable to retrieve build information"
+                                continue
+                            fi
+
+                            echo "Build Number : $BUILD_NUMBER"
+                            echo "Result       : $RESULT"
+
+                            if [ "$RESULT" = "FAILURE" ]; then
+
+                                PREVIOUS_BUILD=$(grep "^${PIPELINE_NAME}|" "$STATE_FILE" 2>/dev/null |
+                                                 tail -1 |
+                                                 cut -d'|' -f2)
+
+                                if [ "$PREVIOUS_BUILD" != "$BUILD_NUMBER" ]; then
+
+                                    echo "NEW FAILURE DETECTED"
+
+                                    SUBJECT="ALERT: CloudBees Pipeline Failed - ${PIPELINE_NAME}"
+
+                                    BODY="
+CloudBees CI Pipeline Failure Notification
+
+Pipeline Name : ${PIPELINE_NAME}
+Build Number  : ${BUILD_NUMBER}
+Status        : FAILURE
+Failed Time   : $(date '+%Y-%m-%d %H:%M:%S')
+
+Pipeline URL:
+${BUILD_URL}
+
+Please check the pipeline and take necessary action.
+"
+
+                                    echo "$BODY" |
+                                        mailx \
+                                        -r "$MAIL_FROM" \
+                                        -s "$SUBJECT" \
+                                        "$MAIL_TO"
+
+                                    echo "Failure notification sent"
+
+                                    grep -v "^${PIPELINE_NAME}|" \
+                                        "$STATE_FILE" \
+                                        > "${STATE_FILE}.tmp" 2>/dev/null
+
+                                    echo "${PIPELINE_NAME}|${BUILD_NUMBER}" \
+                                        >> "${STATE_FILE}.tmp"
+
+                                    mv "${STATE_FILE}.tmp" "$STATE_FILE"
+
+                                else
+                                    echo "Already notified for Build #$BUILD_NUMBER"
+                                fi
+
+                            elif [ "$RESULT" = "SUCCESS" ]; then
+
+                                echo "Pipeline successful"
+
+                                grep -v "^${PIPELINE_NAME}|" \
+                                    "$STATE_FILE" \
+                                    > "${STATE_FILE}.tmp" 2>/dev/null
+
+                                mv "${STATE_FILE}.tmp" "$STATE_FILE"
+
+                            elif [ -z "$RESULT" ]; then
+
+                                echo "Build #$BUILD_NUMBER is still running"
+
+                            else
+
+                                echo "Pipeline result: $RESULT"
+
+                            fi
+
+                        done < "$PIPELINE_FILE"
+
+                        echo ""
+                        echo "=============================================="
+                        echo "CloudBees Pipeline Monitoring Completed"
+                        echo "$(date '+%Y-%m-%d %H:%M:%S')"
+                        echo "=============================================="
+                    '''
+                }
+            }
+        }
+    }
+}
