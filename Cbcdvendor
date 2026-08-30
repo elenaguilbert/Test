@@ -8,4 +8,17 @@ Does CloudBees provide any supported cleanup or purge policies/utilities for thi
 Are there any recommended retention periods or best practices for managing the size of this table?
 Is it safe to purge older records, and if so, what is the recommended approach to do this without impacting the application?
 Our goal is to reduce the database size, if possible, before the cloud migration to minimize data copy time and overall migration duration.
-We appreciate your guidance and recommendations.
+We appreciate your guidance and recommendati
+
+
+
+
+
+UDeploy Upgrade – Status Update
+Upgrade: Successfully upgraded the UDeploy application from 7.3.2 to 8.2.2.
+Issues / Open Items
+Plugins Page: Intermittently loading/disappearing. Issue has been raised with the IBM vendor and we are awaiting their response.
+Salesforce Deployment: Initial Java 17 compatibility issue with the Salesforce plugin was resolved by upgrading the plugin and moving to Agent 8.2.2 / Java 17. Currently, the deployment is failing with INSUFFICIENT_ACCESS / Use Any API Auth error. This is being checked with the Salesforce team.
+Validation
+Internal team validation and application team validation completed successfully.
+Required evidences have been captured.
